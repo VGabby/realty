@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "realty-pipeline"
+name = "realty"
 version = "0.1.0"
 description = "Dynamic skill-based real estate image pipeline powered by Gemini"
 requires-python = ">=3.11"

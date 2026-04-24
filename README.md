@@ -1,4 +1,4 @@
-# realty-pipeline
+# realty
 
 Dynamic skill-based real estate image pipeline powered by Gemini. Each skill defines a catalog of phases; an LLM agent plans which phases to run, executes them, reviews the result, and replans on the fly — skipping phases that aren't needed and adding remediation phases when quality falls short.
 
@@ -13,7 +13,7 @@ Dynamic skill-based real estate image pipeline powered by Gemini. Each skill def
 
 ```bash
 git clone <repo>
-cd realty-pipeline
+cd realty
 uv sync
 export GEMINI_API_KEY=<your-key>
 ```
