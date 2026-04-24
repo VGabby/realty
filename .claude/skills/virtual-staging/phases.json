@@ -1,0 +1,28 @@
+{
+  "skill_id": "virtual-staging",
+  "default_entry_phase": "generate_staging",
+  "phases": [
+    {
+      "phase_id": "generate_staging",
+      "name": "Generate Staging",
+      "prompt_file": "prompts/phase1_generate.md",
+      "rubric_file": "prompts/review_rubric.md",
+      "threshold": 7.0,
+      "max_attempts": 3,
+      "description": "Add tasteful, listing-appropriate furniture and decor to empty/sparse room.",
+      "when_to_add": "Always run first.",
+      "dependencies": []
+    },
+    {
+      "phase_id": "refine_staging",
+      "name": "Refine Staging",
+      "prompt_file": "prompts/phase2_refine.md",
+      "rubric_file": "prompts/review_rubric.md",
+      "threshold": 8.5,
+      "max_attempts": 2,
+      "description": "Fix shadow mismatches, edge seams, lighting inconsistencies from generate_staging.",
+      "when_to_add": "Add if score < 8.5 or issues mention shadow/seam/lighting/artifact.",
+      "dependencies": ["generate_staging"]
+    }
+  ]
+}

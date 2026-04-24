@@ -1,0 +1,18 @@
+runs/
+samples/
+docs/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.env
+*.env
+# project-specific loose notes (not README)
+SPEC.md
+CLAUDE.md
+harness_*.md
+staging_*.md
+.DS_Store
+.python-version

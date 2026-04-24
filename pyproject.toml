@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "realty-pipeline"
+version = "0.1.0"
+description = "Dynamic skill-based real estate image pipeline powered by Gemini"
+requires-python = ">=3.11"
+dependencies = [
+    "google-genai>=1.0",
+    "pydantic>=2.6,<3.0",
+    "typer>=0.12,<1.0",
+    "pillow>=10.0,<12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.14",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+declutter = "pipeline.cli.declutter:app"
+pipeline-plan = "pipeline.cli.plan:app"
+pipeline-edit = "pipeline.cli.edit:app"
+pipeline-review = "pipeline.cli.review:app"
+stage = "pipeline.cli.stage:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pipeline"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: hits live Gemini API (deselect with -m 'not integration')"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pipeline.public-api]
+version = "0.1"
+exports = ["plan", "execute", "verify", "EditPlan", "EditedImage", "Verdict", "RubricScores", "RunConfig", "Manifest"]

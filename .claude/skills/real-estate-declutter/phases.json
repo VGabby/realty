@@ -1,0 +1,28 @@
+{
+  "skill_id": "real-estate-declutter",
+  "default_entry_phase": "broad_removal",
+  "phases": [
+    {
+      "phase_id": "broad_removal",
+      "name": "Broad Removal",
+      "prompt_file": "prompts/phase1_broad.md",
+      "rubric_file": "prompts/review_rubric.md",
+      "threshold": 7.0,
+      "max_attempts": 3,
+      "description": "Remove all portable clutter via inpainting. First pass, intentionally aggressive.",
+      "when_to_add": "Always run first.",
+      "dependencies": []
+    },
+    {
+      "phase_id": "surgical_fixes",
+      "name": "Surgical Fixes",
+      "prompt_file": "prompts/phase2_surgical.md",
+      "rubric_file": "prompts/review_rubric.md",
+      "threshold": 8.0,
+      "max_attempts": 2,
+      "description": "Fix ghost shadows, edge seams, texture artifacts from broad_removal.",
+      "when_to_add": "Add if score < 8.5 or issues mention shadow/seam/artifact.",
+      "dependencies": ["broad_removal"]
+    }
+  ]
+}

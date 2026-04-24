@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Declutter Run Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --muted: #888;
+    --font: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --grey: #6b7280;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── LANDING ── */
+  #landing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 24px;
+    text-align: center;
+  }
+  #landing h1 { font-size: 18px; color: var(--text); letter-spacing: 0.05em; }
+  #landing p  { color: var(--muted); font-size: 12px; }
+
+  .file-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #1f1f1f;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 13px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .file-btn:hover { background: #2a2a2a; border-color: #444; }
+  #fileInput { display: none; }
+
+  /* ── MAIN CONTENT ── */
+  #main { display: none; max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+
+  /* ── HEADER BAR ── */
+  #header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 24px;
+  }
+  #runId { font-size: 14px; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  }
+  .badge-green  { background: #052e16; color: var(--green); border: 1px solid #166534; }
+  .badge-amber  { background: #451a03; color: var(--amber); border: 1px solid #92400e; }
+  .badge-grey   { background: #1c1c1c; color: var(--grey);  border: 1px solid #374151; }
+  .badge-red    { background: #1f0505; color: var(--red);   border: 1px solid #7f1d1d; }
+
+  .meta-item { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .meta-item span { color: var(--text); }
+
+  /* ── BEFORE / AFTER SLIDER ── */
+  #slider-section {
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #111;
+  }
+  #slider-title {
+    padding: 10px 16px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  #slider-wrap {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    user-select: none;
+    overflow: hidden;
+    cursor: ew-resize;
+  }
+  #img-after, #img-before {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+  }
+  .img-placeholder {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #111;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .img-placeholder-icon { font-size: 32px; opacity: 0.4; }
+
+  #clip-before {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  #divider-line {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #fff;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 10;
+  }
+  #divider-handle {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    z-index: 11;
+    font-size: 14px;
+    color: #222;
+    pointer-events: none;
+  }
+  .slider-label {
+    position: absolute;
+    top: 12px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    z-index: 5;
+    pointer-events: none;
+  }
+  #label-before { left: 12px;  background: rgba(0,0,0,0.6); color: #fff; }
+  #label-after  { right: 12px; background: rgba(0,0,0,0.6); color: #fff; }
+
+  /* ── PHASES ── */
+  .phase-section { margin-bottom: 24px; }
+  .phase-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: #161616;
+    border: 1px solid var(--border);
+    border-radius: 8px 8px 0 0;
+    border-bottom: none;
+  }
+  .phase-name { font-size: 13px; color: var(--text); text-transform: uppercase; letter-spacing: 0.06em; }
+  .phase-id-chip {
+    padding: 2px 8px; border-radius: 4px;
+    background: #252525; color: var(--muted);
+    font-size: 10px; border: 1px solid var(--border);
+  }
+
+  /* ── ATTEMPT CARD ── */
+  .attempt-card {
+    border: 1px solid var(--border);
+    border-top: none;
+    background: var(--card);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 16px;
+  }
+  .attempt-card:last-child { border-radius: 0 0 8px 8px; }
+
+  .attempt-thumb {
+    position: relative;
+    width: 120px; height: 80px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    flex-shrink: 0;
+    background: #111;
+  }
+  .attempt-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .attempt-thumb .thumb-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 4px; color: var(--muted); font-size: 9px; text-align: center; padding: 4px;
+  }
+  .thumb-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0);
+    transition: background 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; opacity: 0;
+    transition: all 0.15s;
+  }
+  .attempt-thumb:hover .thumb-overlay { background: rgba(0,0,0,0.45); opacity: 1; }
+
+  .attempt-meta { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+  .attempt-top-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  }
+  .score-number {
+    font-size: 28px; font-weight: 700; line-height: 1;
+  }
+  .score-label { font-size: 9px; color: var(--muted); margin-top: 2px; }
+  .score-block { display: flex; flex-direction: column; align-items: center; }
+
+  /* ── RUBRIC BARS ── */
+  .rubric { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+  .rubric-row { display: flex; align-items: center; gap: 8px; }
+  .rubric-label { width: 90px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
+  .rubric-track { flex: 1; height: 6px; background: #2a2a2a; border-radius: 3px; overflow: hidden; }
+  .rubric-fill  { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .rubric-val   { width: 28px; text-align: right; font-size: 10px; color: var(--muted); }
+
+  /* ── HINT / ELAPSED ── */
+  .attempt-hint { font-style: italic; color: var(--muted); font-size: 11px; }
+  .elapsed-tag  { font-size: 10px; color: #555; }
+
+  /* ── ISSUES / SUGGESTIONS ── */
+  .details-toggle {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; font-size: 11px; color: var(--muted);
+    user-select: none; background: none; border: none;
+    font-family: var(--font); padding: 0;
+  }
+  .details-toggle:hover { color: var(--text); }
+  .toggle-arrow { transition: transform 0.2s; display: inline-block; }
+  .toggle-arrow.open { transform: rotate(90deg); }
+  .details-body { display: none; margin-top: 8px; }
+  .details-body.open { display: block; }
+
+  .issue-list, .suggestion-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .issue-list li { font-size: 11px; color: var(--red); padding-left: 14px; position: relative; }
+  .issue-list li::before { content: '•'; position: absolute; left: 0; }
+  .suggestion-list li { font-size: 11px; color: var(--muted); padding-left: 14px; position: relative; }
+  .suggestion-list li::before { content: '›'; position: absolute; left: 0; }
+
+  /* ── PLAN PANEL ── */
+  #plan-section {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .collapsible-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--card);
+    cursor: pointer;
+    user-select: none;
+  }
+  .collapsible-header:hover { background: #202020; }
+  .collapsible-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .collapsible-body { display: none; padding: 16px; border-top: 1px solid var(--border); }
+  .collapsible-body.open { display: block; }
+
+  .plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 600px) { .plan-grid { grid-template-columns: 1fr; } }
+  .plan-col-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .plan-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .plan-list.removable li { color: var(--red); font-size: 11px; padding-left: 14px; position: relative; }
+  .plan-list.removable li::before { content: '−'; position: absolute; left: 0; }
+  .plan-list.keep li { color: var(--green); font-size: 11px; padding-left: 14px; position: relative; }
+  .plan-list.keep li::before { content: '+'; position: absolute; left: 0; }
+  .plan-rationale { font-size: 11px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 12px; }
+
+  /* ── LIGHTBOX ── */
+  #lightbox {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 4px; }
+  #lightbox-close {
+    position: fixed; top: 16px; right: 20px;
+    font-size: 28px; color: #fff; cursor: pointer; z-index: 1001;
+    background: none; border: none; font-family: var(--font);
+    line-height: 1; opacity: 0.7;
+  }
+  #lightbox-close:hover { opacity: 1; }
+
+  /* ── ERROR BANNER ── */
+  #error-banner {
+    display: none;
+    padding: 12px 16px;
+    background: #1f0505;
+    border: 1px solid #7f1d1d;
+    border-radius: 6px;
+    color: var(--red);
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  /* dividers */
+  .attempt-divider { border: none; border-top: 1px solid #1e1e1e; margin: 0; }
+
+  .section-gap { margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="landing">
+  <div>
+    <div style="font-size:36px;margin-bottom:12px;opacity:0.3">◫</div>
+    <h1>Declutter Run Viewer</h1>
+    <p style="margin-top:6px;">Select a run folder to begin</p>
+  </div>
+  <label class="file-btn" for="fileInput">
+    <span style="font-size:15px">📂</span>
+    Open run folder
+  </label>
+  <input type="file" id="fileInput" webkitdirectory multiple>
+  <p>Pick the <code style="color:#555">runs/&lt;run-id&gt;/</code> directory</p>
+</div>
+
+<!-- ERROR -->
+<div id="error-banner"></div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- Header -->
+  <div id="header">
+    <span id="runId">—</span>
+    <span id="outcomeBadge" class="badge badge-grey">—</span>
+    <span class="meta-item">Elapsed: <span id="elapsed">—</span></span>
+    <span class="meta-item">Dimensions: <span id="dimensions">—</span></span>
+    <span class="meta-item">Model: <span id="editModel">—</span></span>
+  </div>
+
+  <!-- Before / After Slider -->
+  <div id="slider-section">
+    <div id="slider-title">Before / After</div>
+    <div id="slider-wrap">
+      <!-- After (base layer) -->
+      <div id="after-layer">
+        <img id="img-after" alt="after">
+        <div id="after-placeholder" class="img-placeholder" style="display:none">
+          <span class="img-placeholder-icon">⬜</span>
+          <span id="after-placeholder-name"></span>
+        </div>
+      </div>
+      <!-- Before (clipped overlay) -->
+      <div id="clip-before">
+        <img id="img-before" alt="before">
+        <div id="before-placeholder" class="img-placeholder" style="display:none">
+          <span class="img-placeholder-icon">⬜</span>
+          <span id="before-placeholder-name"></span>
+        </div>
+      </div>
+      <!-- Divider -->
+      <div id="divider-line"></div>
+      <div id="divider-handle">⇔</div>
+      <!-- Labels -->
+      <span class="slider-label" id="label-before">Before</span>
+      <span class="slider-label" id="label-after">After</span>
+    </div>
+  </div>
+
+  <!-- Plan Panel -->
+  <div id="plan-section">
+    <div class="collapsible-header" onclick="togglePlan(this)">
+      <span class="collapsible-title" id="plan-title">Plan</span>
+      <span class="toggle-arrow" id="plan-arrow">▶</span>
+    </div>
+    <div class="collapsible-body" id="plan-body">
+      <!-- Declutter layout (shown for real-estate-declutter or legacy) -->
+      <div id="plan-declutter">
+        <div class="plan-grid">
+          <div>
+            <div class="plan-col-title">Objects to remove</div>
+            <ul class="plan-list removable" id="plan-removable"></ul>
+          </div>
+          <div>
+            <div class="plan-col-title">Keep (structural)</div>
+            <ul class="plan-list keep" id="plan-keep"></ul>
+          </div>
+        </div>
+        <div class="plan-rationale" id="plan-rationale"></div>
+      </div>
+      <!-- Staging layout (shown for virtual-staging) -->
+      <div id="plan-staging" style="display:none">
+        <div class="plan-rationale" id="plan-staging-brief"></div>
+      </div>
+      <!-- Generic layout (future skills) -->
+      <div id="plan-generic" style="display:none">
+        <div class="plan-rationale" id="plan-generic-rationale"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase Timeline -->
+  <div id="phases-container"></div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="full size">
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let fileMap = {};   // filename (lowercase) → File object
+let manifest = null;
+
+// ─── File input handler ───────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  fileMap = {};
+  for (const f of e.target.files) {
+    const name = f.name.toLowerCase();
+    fileMap[name] = f;
+  }
+
+  const manifestFile = fileMap['manifest.json'];
+  if (!manifestFile) {
+    showError('No manifest.json found in the selected folder.');
+    return;
+  }
+  hideError();
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      manifest = JSON.parse(ev.target.result);
+      render(manifest);
+    } catch(err) {
+      showError('Failed to parse manifest.json: ' + err.message);
+    }
+  };
+  reader.readAsText(manifestFile);
+});
+
+// ─── Image URL helper ─────────────────────────────────────────────────────────
+function getImageURL(filename) {
+  if (!filename) return null;
+  const key = filename.toLowerCase();
+  const f = fileMap[key];
+  if (!f) return null;
+  return URL.createObjectURL(f);
+}
+
+// ─── Elapsed time formatter ───────────────────────────────────────────────────
+function formatElapsed(start, end) {
+  if (!start || !end) return '—';
+  const ms = new Date(end) - new Date(start);
+  if (isNaN(ms) || ms < 0) return '—';
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m === 0) return sec + 's';
+  return m + 'm ' + sec + 's';
+}
+
+function attemptElapsed(a) {
+  return formatElapsed(a.started_at, a.completed_at);
+}
+
+// ─── Score colour ─────────────────────────────────────────────────────────────
+function scoreColor(s) {
+  if (s < 6.0)  return '#ef4444';
+  if (s < 8.0)  return '#f59e0b';
+  return '#22c55e';
+}
+
+function rubricFillColor(v) {
+  if (v < 6.0)  return '#ef4444';
+  if (v < 8.0)  return '#f59e0b';
+  return '#22c55e';
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render(m) {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+
+  // Header
+  document.getElementById('runId').textContent = m.run_id || '—';
+
+  const outcome = (m.outcome || '').toLowerCase();
+  const badge = document.getElementById('outcomeBadge');
+  if (outcome === 'accepted') {
+    badge.textContent = 'ACCEPTED';
+    badge.className = 'badge badge-green';
+  } else if (outcome === 'escalated') {
+    badge.textContent = 'ESCALATED';
+    badge.className = 'badge badge-amber';
+  } else {
+    badge.textContent = outcome.toUpperCase() || 'UNKNOWN';
+    badge.className = 'badge badge-grey';
+  }
+
+  document.getElementById('elapsed').textContent = formatElapsed(m.created_at, m.completed_at);
+
+  const inp = m.input || {};
+  if (inp.width && inp.height) {
+    document.getElementById('dimensions').textContent = inp.width + ' × ' + inp.height;
+  } else {
+    document.getElementById('dimensions').textContent = '—';
+  }
+
+  document.getElementById('editModel').textContent = (m.config && m.config.edit_model) || '—';
+
+  // Before / After Slider
+  renderSlider(m);
+
+  // Plan
+  renderPlan(m.plan || {}, m.skill_id || null);
+
+  // Phases
+  renderPhases(m.phases || []);
+}
+
+// ─── Slider ───────────────────────────────────────────────────────────────────
+function renderSlider(m) {
+  const beforeName = (m.input && m.input.path) ? m.input.path : 'input.jpg';
+  const afterName  = (m.final_output && m.final_output.path) ? m.final_output.path : 'final.jpg';
+
+  const beforeURL = getImageURL(beforeName);
+  const afterURL  = getImageURL(afterName);
+
+  const imgBefore = document.getElementById('img-before');
+  const imgAfter  = document.getElementById('img-after');
+  const bph = document.getElementById('before-placeholder');
+  const aph = document.getElementById('after-placeholder');
+
+  if (beforeURL) {
+    imgBefore.src = beforeURL;
+    imgBefore.style.display = 'block';
+    bph.style.display = 'none';
+  } else {
+    imgBefore.style.display = 'none';
+    bph.style.display = 'flex';
+    document.getElementById('before-placeholder-name').textContent = beforeName;
+  }
+
+  if (afterURL) {
+    imgAfter.src = afterURL;
+    imgAfter.style.display = 'block';
+    aph.style.display = 'none';
+  } else {
+    imgAfter.style.display = 'none';
+    aph.style.display = 'flex';
+    document.getElementById('after-placeholder-name').textContent = afterName;
+  }
+
+  setupSlider();
+}
+
+function setupSlider() {
+  const wrap     = document.getElementById('slider-wrap');
+  const clip     = document.getElementById('clip-before');
+  const divLine  = document.getElementById('divider-line');
+  const divHandle= document.getElementById('divider-handle');
+  let dragging = false;
+  let pct = 50;
+
+  function setPos(p) {
+    pct = Math.max(0, Math.min(100, p));
+    const px = pct + '%';
+    divLine.style.left   = px;
+    divHandle.style.left = px;
+    clip.style.clipPath  = 'inset(0 ' + (100 - pct) + '% 0 0)';
+  }
+
+  setPos(50);
+
+  function onMove(clientX) {
+    const rect = wrap.getBoundingClientRect();
+    const p = ((clientX - rect.left) / rect.width) * 100;
+    setPos(p);
+  }
+
+  wrap.addEventListener('mousedown', function(e) {
+    dragging = true;
+    onMove(e.clientX);
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', function(e) {
+    if (dragging) onMove(e.clientX);
+  });
+  window.addEventListener('mouseup', function() { dragging = false; });
+
+  wrap.addEventListener('touchstart', function(e) {
+    dragging = true;
+    onMove(e.touches[0].clientX);
+    e.preventDefault();
+  }, { passive: false });
+  wrap.addEventListener('touchmove', function(e) {
+    if (dragging) onMove(e.touches[0].clientX);
+    e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('touchend', function() { dragging = false; });
+}
+
+// ─── Plan ─────────────────────────────────────────────────────────────────────
+function renderPlan(plan, skillId) {
+  const declutterEl = document.getElementById('plan-declutter');
+  const stagingEl   = document.getElementById('plan-staging');
+  const genericEl   = document.getElementById('plan-generic');
+
+  // Hide all layouts, show the right one
+  declutterEl.style.display = 'none';
+  stagingEl.style.display   = 'none';
+  genericEl.style.display   = 'none';
+
+  if (skillId === 'virtual-staging') {
+    document.getElementById('plan-title').textContent = 'Staging Brief';
+    stagingEl.style.display = '';
+    const brief = [plan.rationale, plan.phase1_instructions]
+      .filter(Boolean).join('\n\n');
+    document.getElementById('plan-staging-brief').textContent = brief;
+
+  } else if (!skillId || skillId === 'real-estate-declutter') {
+    document.getElementById('plan-title').textContent = 'Removal Plan';
+    declutterEl.style.display = '';
+
+    const removable = (plan.removable_objects || []).filter(function(o) { return o !== 'placeholder'; });
+    const keep      = plan.structural_keep || [];
+    const remEl = document.getElementById('plan-removable');
+    remEl.innerHTML = '';
+    removable.forEach(function(obj) {
+      const li = document.createElement('li');
+      li.textContent = obj;
+      remEl.appendChild(li);
+    });
+    const keepEl = document.getElementById('plan-keep');
+    keepEl.innerHTML = '';
+    keep.forEach(function(obj) {
+      const li = document.createElement('li');
+      li.textContent = obj;
+      keepEl.appendChild(li);
+    });
+    document.getElementById('plan-rationale').textContent = plan.rationale || '';
+
+  } else {
+    document.getElementById('plan-title').textContent = 'Plan';
+    genericEl.style.display = '';
+    document.getElementById('plan-generic-rationale').textContent = plan.rationale || '';
+  }
+}
+
+function togglePlan(header) {
+  const body  = document.getElementById('plan-body');
+  const arrow = document.getElementById('plan-arrow');
+  const open  = body.classList.toggle('open');
+  arrow.textContent = open ? '▼' : '▶';
+}
+
+// ─── Phases ───────────────────────────────────────────────────────────────────
+function renderPhases(phases) {
+  const container = document.getElementById('phases-container');
+  container.innerHTML = '';
+
+  phases.forEach(function(phase) {
+    const section = document.createElement('div');
+    section.className = 'phase-section';
+
+    // Phase header
+    const phaseHeader = document.createElement('div');
+    phaseHeader.className = 'phase-header';
+
+    const chip = document.createElement('span');
+    chip.className = 'phase-id-chip';
+    chip.textContent = 'Phase ' + phase.phase_id;
+
+    const name = document.createElement('span');
+    name.className = 'phase-name';
+    name.textContent = (phase.name || '').replace(/_/g, ' ');
+
+    const spacer = document.createElement('span');
+    spacer.style.flex = '1';
+
+    const accepted = phase.accepted === true;
+    const phaseBadge = document.createElement('span');
+    phaseBadge.className = 'badge ' + (accepted ? 'badge-green' : 'badge-red');
+    phaseBadge.textContent = accepted ? 'ACCEPTED' : 'REJECTED';
+
+    phaseHeader.appendChild(chip);
+    phaseHeader.appendChild(name);
+    phaseHeader.appendChild(spacer);
+    phaseHeader.appendChild(phaseBadge);
+    section.appendChild(phaseHeader);
+
+    // Attempts
+    const attempts = phase.attempts || [];
+    attempts.forEach(function(attempt, idx) {
+      const card = buildAttemptCard(attempt, idx === attempts.length - 1);
+      section.appendChild(card);
+    });
+
+    container.appendChild(section);
+  });
+}
+
+function buildAttemptCard(attempt, isLast) {
+  const card = document.createElement('div');
+  card.className = 'attempt-card';
+
+  // ── Thumbnail ──────────────────────────────────────────────────────────────
+  const thumbPath = attempt.edit_output && attempt.edit_output.path;
+  const thumbDiv = document.createElement('div');
+  thumbDiv.className = 'attempt-thumb';
+
+  if (thumbPath) {
+    const thumbURL = getImageURL(thumbPath);
+    if (thumbURL) {
+      const img = document.createElement('img');
+      img.src = thumbURL;
+      img.alt = thumbPath;
+      thumbDiv.appendChild(img);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'thumb-overlay';
+      overlay.textContent = '⤢';
+      thumbDiv.appendChild(overlay);
+
+      thumbDiv.addEventListener('click', function() { openLightbox(thumbURL); });
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'thumb-placeholder';
+      ph.innerHTML = '<span style="font-size:18px;opacity:0.3">⬜</span><span>' + thumbPath + '</span>';
+      thumbDiv.appendChild(ph);
+    }
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'thumb-placeholder';
+    ph.innerHTML = '<span style="opacity:0.3">No image</span>';
+    thumbDiv.appendChild(ph);
+  }
+
+  card.appendChild(thumbDiv);
+
+  // ── Meta column ────────────────────────────────────────────────────────────
+  const meta = document.createElement('div');
+  meta.className = 'attempt-meta';
+
+  // Top row: score + badge + attempt# + elapsed
+  const topRow = document.createElement('div');
+  topRow.className = 'attempt-top-row';
+
+  // Score block
+  const review = attempt.review || {};
+  const score  = (typeof review.score === 'number') ? review.score : null;
+  if (score !== null) {
+    const scoreBlock = document.createElement('div');
+    scoreBlock.className = 'score-block';
+    const scoreNum = document.createElement('div');
+    scoreNum.className = 'score-number';
+    scoreNum.style.color = scoreColor(score);
+    scoreNum.textContent = score.toFixed(1);
+    const scoreLbl = document.createElement('div');
+    scoreLbl.className = 'score-label';
+    scoreLbl.textContent = 'SCORE';
+    scoreBlock.appendChild(scoreNum);
+    scoreBlock.appendChild(scoreLbl);
+    topRow.appendChild(scoreBlock);
+  }
+
+  // Accepted badge
+  const attAccepted = attempt.accepted === true || (review.accepted === true);
+  const attBadge = document.createElement('span');
+  attBadge.className = 'badge ' + (attAccepted ? 'badge-green' : 'badge-red');
+  attBadge.textContent = attAccepted ? 'ACCEPTED' : 'REJECTED';
+  topRow.appendChild(attBadge);
+
+  // Attempt number
+  const attNum = document.createElement('span');
+  attNum.style.cssText = 'font-size:11px;color:#555;margin-left:4px;';
+  attNum.textContent = 'Attempt ' + attempt.attempt;
+  topRow.appendChild(attNum);
+
+  // Elapsed
+  const el = attemptElapsed(attempt);
+  if (el !== '—') {
+    const elSpan = document.createElement('span');
+    elSpan.className = 'elapsed-tag';
+    elSpan.textContent = '(' + el + ')';
+    topRow.appendChild(elSpan);
+  }
+
+  meta.appendChild(topRow);
+
+  // Rubric bars
+  // Rubric bars
+  const rubric = review.rubric || {};
+  const rubricKeys = Object.keys(rubric);
+  if (rubricKeys.length > 0) {
+    const rubricDiv = document.createElement('div');
+    rubricDiv.className = 'rubric';
+    rubricKeys.forEach(function(key) {
+      const val = (typeof rubric[key] === 'number') ? rubric[key] : null;
+      const row = document.createElement('div');
+      row.className = 'rubric-row';
+
+      const lbl = document.createElement('span');
+      lbl.className = 'rubric-label';
+      lbl.textContent = key;
+
+      const track = document.createElement('div');
+      track.className = 'rubric-track';
+      const fill = document.createElement('div');
+      fill.className = 'rubric-fill';
+      fill.style.width  = val !== null ? (val * 10) + '%' : '0%';
+      fill.style.background = val !== null ? rubricFillColor(val) : '#444';
+      track.appendChild(fill);
+
+      const valSpan = document.createElement('span');
+      valSpan.className = 'rubric-val';
+      valSpan.textContent = val !== null ? val.toFixed(1) : '—';
+
+      row.appendChild(lbl);
+      row.appendChild(track);
+      row.appendChild(valSpan);
+      rubricDiv.appendChild(row);
+    });
+    meta.appendChild(rubricDiv);
+  }
+
+  // Hint
+  const hint = attempt.hint;
+  if (hint) {
+    const hintDiv = document.createElement('div');
+    hintDiv.className = 'attempt-hint';
+    hintDiv.textContent = '💡 ' + hint;
+    meta.appendChild(hintDiv);
+  }
+
+  // Issues & suggestions collapsible
+  const issues      = review.issues      || [];
+  const suggestions = review.suggestions || [];
+  if (issues.length > 0 || suggestions.length > 0) {
+    const total = issues.length + suggestions.length;
+    const btn = document.createElement('button');
+    btn.className = 'details-toggle';
+    const arrow = document.createElement('span');
+    arrow.className = 'toggle-arrow';
+    arrow.textContent = '▶';
+    btn.appendChild(arrow);
+    const lbl = document.createElement('span');
+    lbl.textContent = total + ' note' + (total !== 1 ? 's' : '') +
+      (issues.length ? ' · ' + issues.length + ' issue' + (issues.length !== 1 ? 's' : '') : '');
+    btn.appendChild(lbl);
+
+    const body = document.createElement('div');
+    body.className = 'details-body';
+
+    if (issues.length > 0) {
+      const issueList = document.createElement('ul');
+      issueList.className = 'issue-list';
+      issues.forEach(function(issue) {
+        const li = document.createElement('li');
+        li.textContent = issue;
+        issueList.appendChild(li);
+      });
+      body.appendChild(issueList);
+    }
+
+    if (suggestions.length > 0) {
+      const sugList = document.createElement('ul');
+      sugList.className = 'suggestion-list section-gap';
+      suggestions.forEach(function(s) {
+        const li = document.createElement('li');
+        li.textContent = s;
+        sugList.appendChild(li);
+      });
+      body.appendChild(sugList);
+    }
+
+    btn.addEventListener('click', function() {
+      const open = body.classList.toggle('open');
+      arrow.classList.toggle('open', open);
+      arrow.textContent = open ? '▼' : '▶';
+    });
+
+    meta.appendChild(btn);
+    meta.appendChild(body);
+  }
+
+  card.appendChild(meta);
+  return card;
+}
+
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+function openLightbox(url) {
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightbox-img').src = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+// ─── Error helpers ────────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+</script>
+</body>
+</html>
