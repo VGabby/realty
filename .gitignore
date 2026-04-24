@@ -16,3 +16,4 @@ harness_*.md
 staging_*.md
 .DS_Store
 .python-version
+.coverage
