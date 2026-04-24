@@ -54,13 +54,8 @@ def main(
 
     # Minimal inline plan — staging doesn't need a Gemini planning call
     edit_plan = EditPlan(
-        removable_objects=["placeholder"],
         structural_keep=["all existing architectural elements"],
         rationale="Virtual staging: add furniture and decor to empty/sparse room.",
-        phase1_instructions="Add tasteful, listing-appropriate furniture per the system prompt.",
-        phase2_instructions=(
-            "Refine staging: fix shadow mismatches, edge seams, lighting inconsistencies."
-        ),
     )
     plan_path = run_dir / "plan.json"
     plan_path.write_text(edit_plan.model_dump_json(indent=2), encoding="utf-8")

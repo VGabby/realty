@@ -11,29 +11,6 @@ from pipeline.contracts import EditedImage, EditPlan
 from pipeline.errors import ExecuteError
 from pipeline.images import open_normalized_image
 
-_PHASE1_BASE = """You are a professional real estate photo editor performing broad clutter removal.
-
-TASK: Remove the listed portable, out-of-place items from this real estate photo.
-- Inpaint each removed area naturally using surrounding textures, colors, and lighting.
-- Preserve all furniture, architecture, rugs, curtains, and structural elements exactly.
-- Do not alter lighting, perspective, or room layout.
-- After removal, the room should look clean and ready for listing.
-
-Return ONLY the edited image with no commentary.
-"""
-
-_PHASE2_BASE = """You are a professional real estate photo editor performing\
- surgical artifact cleanup.
-
-TASK: Fix residual artifacts from the previous broad-removal pass.
-- Look for: ghost shadows, edge discontinuities, texture seams, color inconsistencies.
-- Repair each artifact so the surface looks continuous and natural.
-- Make NO new object removals — only repair existing inpainting artifacts.
-- Preserve all content as received.
-
-Return ONLY the edited image with no commentary.
-"""
-
 
 def execute(
     input_path: Path,
@@ -43,22 +20,17 @@ def execute(
     hint: str | None,
     output_path: Path,
     config: RunConfig,
-    system_prompt: str | None = None,
+    system_prompt: str,
 ) -> EditedImage:
+    """Execute one edit pass. `system_prompt` is required — load it from the skill's prompt_file."""
     api_key = __import__("os").environ.get(config.api_key_env)
     if not api_key:
         raise ExecuteError(f"Missing env var {config.api_key_env}")
 
     client = genai.Client(api_key=api_key)
 
-    base_prompt = (
-        system_prompt
-        if system_prompt is not None
-        else (_PHASE1_BASE if phase_id == 1 else _PHASE2_BASE)
-    )
-    phase_instructions = plan.phase1_instructions if phase_id == 1 else plan.phase2_instructions
-    prompt_parts = [base_prompt, f"\n\nSPECIFIC INSTRUCTIONS:\n{phase_instructions}"]
-    if phase_id == 1:
+    prompt_parts = [system_prompt]
+    if plan.removable_objects:
         items = "\n".join(f"- {obj}" for obj in plan.removable_objects)
         prompt_parts.append(f"\n\nOBJECTS TO REMOVE:\n{items}")
     if hint:

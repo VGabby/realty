@@ -23,14 +23,8 @@ Produce a JSON object with this exact schema:
 {
   "removable_objects": ["<specific item description>", ...],   // min 1 item
   "structural_keep": ["<element to preserve>", ...],           // min 1 item
-  "rationale": "<one paragraph explanation of the declutter strategy>",
-  "phase1_instructions": "<detailed instructions for broad removal pass>",
-  "phase2_instructions": "<detailed instructions for surgical artifact cleanup pass>"
+  "rationale": "<one paragraph explanation of the declutter strategy>"
 }
-
-phase1_instructions should focus on: remove the listed objects completely, inpaint naturally.
-phase2_instructions should focus on: fix residual shadows, edge discontinuities,\
- texture seams from phase 1.
 
 Return ONLY valid JSON, no markdown fences.
 """

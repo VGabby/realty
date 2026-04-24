@@ -46,8 +46,6 @@ def test_write_plan(tmp_path):
         removable_objects=["bottle", "laundry"],
         structural_keep=["sofa"],
         rationale="Clean for MLS.",
-        phase1_instructions="remove",
-        phase2_instructions="fix",
     )
     n.write_plan(plan)
     text = (tmp_path / "narration.md").read_text()

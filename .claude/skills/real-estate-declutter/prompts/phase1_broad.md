@@ -13,8 +13,4 @@ Rules:
 After removal the room should look professionally staged and listing-ready.
 
 ---
-*The following plan-specific instructions and optional hint are appended at runtime:*
-
-{plan.phase1_instructions}
-
-{hint}
+*Objects to remove and any reviewer hints are appended at runtime by the pipeline.*

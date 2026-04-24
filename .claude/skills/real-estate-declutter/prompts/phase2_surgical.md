@@ -16,8 +16,4 @@ Rules:
 - The final result should look as if the objects were never there.
 
 ---
-*The following plan-specific instructions and optional hint are appended at runtime:*
-
-{plan.phase2_instructions}
-
-{hint}
+*Any reviewer hints are appended at runtime by the pipeline.*

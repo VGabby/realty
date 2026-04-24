@@ -60,8 +60,6 @@ def _make_plan_json() -> str:
             "removable_objects": ["plastic bottle on coffee table"],
             "structural_keep": ["sofa", "rug"],
             "rationale": "Remove clutter for MLS listing.",
-            "phase1_instructions": "Remove the plastic bottle.",
-            "phase2_instructions": "Fix any residual shadows.",
         }
     )
 
@@ -165,8 +163,6 @@ def _make_edit_plan() -> EditPlan:
         removable_objects=["bottle"],
         structural_keep=["sofa"],
         rationale="test",
-        phase1_instructions="remove bottle",
-        phase2_instructions="fix shadows",
     )
 
 
@@ -196,7 +192,14 @@ class TestExecute:
         from pipeline.capabilities.execute import execute
 
         result = execute(
-            _make_image(tmp_path, "in.jpg"), _make_edit_plan(), 1, 1, None, out_path, RunConfig()
+            _make_image(tmp_path, "in.jpg"),
+            _make_edit_plan(),
+            1,
+            1,
+            None,
+            out_path,
+            RunConfig(),
+            system_prompt="remove clutter",
         )
         assert out_path.exists()
         assert result.sha256 == hashlib.sha256(img_bytes).hexdigest()
@@ -213,7 +216,16 @@ class TestExecute:
         from pipeline.capabilities.execute import execute
 
         with pytest.raises(ExecuteError):
-            execute(_make_image(tmp_path), _make_edit_plan(), 1, 1, None, out_path, RunConfig())
+            execute(
+                _make_image(tmp_path),
+                _make_edit_plan(),
+                1,
+                1,
+                None,
+                out_path,
+                RunConfig(),
+                system_prompt="test",
+            )
 
     @patch("pipeline.capabilities.execute.genai")
     def test_normalizes_input_orientation(self, mock_genai, tmp_path):
@@ -236,6 +248,7 @@ class TestExecute:
             None,
             out_path,
             RunConfig(),
+            system_prompt="test",
         )
 
         sent_image = client.models.generate_content.call_args.kwargs["contents"][1]
@@ -258,10 +271,89 @@ class TestExecute:
 
         from pipeline.capabilities.execute import execute
 
-        execute(in_path, _make_edit_plan(), 1, 1, None, out_path, RunConfig(image_size="512"))
+        execute(
+            in_path,
+            _make_edit_plan(),
+            1,
+            1,
+            None,
+            out_path,
+            RunConfig(image_size="512"),
+            system_prompt="test",
+        )
 
         call_kwargs = client.models.generate_content.call_args.kwargs
         assert call_kwargs["config"].image_config.image_size == "512"
+
+    @patch("pipeline.capabilities.execute.genai")
+    def test_phase3_uses_system_prompt_not_phase2_text(self, mock_genai, tmp_path):
+        out_path = tmp_path / "out.jpg"
+        part = MagicMock()
+        part.inline_data = MagicMock()
+        part.inline_data.data = _fake_image_bytes()
+        response = MagicMock()
+        response.parts = [part]
+        response.usage_metadata = None
+        client = _mock_client(mock_genai, response)
+
+        from pipeline.capabilities.execute import execute
+
+        execute(
+            _make_image(tmp_path, "in.jpg"),
+            _make_edit_plan(),
+            3,
+            1,
+            None,
+            out_path,
+            RunConfig(),
+            system_prompt="custom phase 3 prompt",
+        )
+
+        sent_prompt = client.models.generate_content.call_args.kwargs["contents"][0]
+        assert "custom phase 3 prompt" in sent_prompt
+        assert "SPECIFIC INSTRUCTIONS" not in sent_prompt
+
+    def test_no_system_prompt_raises(self, tmp_path):
+        from pipeline.capabilities.execute import execute
+
+        with pytest.raises(TypeError):
+            execute(
+                _make_image(tmp_path, "in.jpg"),
+                _make_edit_plan(),
+                1,
+                1,
+                None,
+                tmp_path / "out.jpg",
+                RunConfig(),
+            )
+
+    @patch("pipeline.capabilities.execute.genai")
+    def test_empty_removable_objects_omits_objects_block(self, mock_genai, tmp_path):
+        out_path = tmp_path / "out.jpg"
+        part = MagicMock()
+        part.inline_data = MagicMock()
+        part.inline_data.data = _fake_image_bytes()
+        response = MagicMock()
+        response.parts = [part]
+        response.usage_metadata = None
+        client = _mock_client(mock_genai, response)
+
+        from pipeline.capabilities.execute import execute
+
+        staging_plan = EditPlan(structural_keep=["walls"], rationale="staging")
+        execute(
+            _make_image(tmp_path, "in.jpg"),
+            staging_plan,
+            1,
+            1,
+            None,
+            out_path,
+            RunConfig(),
+            system_prompt="stage this room",
+        )
+
+        sent_prompt = client.models.generate_content.call_args.kwargs["contents"][0]
+        assert "OBJECTS TO REMOVE" not in sent_prompt
 
     @patch("pipeline.capabilities.execute.genai")
     def test_no_image_size_uses_no_config(self, mock_genai, tmp_path):
@@ -279,7 +371,16 @@ class TestExecute:
 
         from pipeline.capabilities.execute import execute
 
-        execute(in_path, _make_edit_plan(), 1, 1, None, out_path, RunConfig(image_size=None))
+        execute(
+            in_path,
+            _make_edit_plan(),
+            1,
+            1,
+            None,
+            out_path,
+            RunConfig(image_size=None),
+            system_prompt="test",
+        )
 
         call_kwargs = client.models.generate_content.call_args.kwargs
         assert call_kwargs["config"].response_modalities == ["IMAGE"]

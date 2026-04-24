@@ -8,11 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class EditPlan(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    removable_objects: list[str] = Field(min_length=1)
+    removable_objects: list[str] = Field(default_factory=list)
     structural_keep: list[str] = Field(min_length=1)
     rationale: str
-    phase1_instructions: str
-    phase2_instructions: str
 
 
 class EditedImage(BaseModel):

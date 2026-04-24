@@ -31,23 +31,9 @@ def test_verdict_immutable():
         v.accepted = False  # type: ignore[misc]
 
 
-def test_edit_plan_non_empty_lists():
+def test_edit_plan_structural_keep_required():
     with pytest.raises(ValidationError):
-        EditPlan(
-            removable_objects=[],
-            structural_keep=["sofa"],
-            rationale="test",
-            phase1_instructions="remove",
-            phase2_instructions="fix",
-        )
-    with pytest.raises(ValidationError):
-        EditPlan(
-            removable_objects=["bottle"],
-            structural_keep=[],
-            rationale="test",
-            phase1_instructions="remove",
-            phase2_instructions="fix",
-        )
+        EditPlan(structural_keep=[], rationale="test")
 
 
 def test_edit_plan_valid():
@@ -55,10 +41,30 @@ def test_edit_plan_valid():
         removable_objects=["bottle on table"],
         structural_keep=["sofa", "rug"],
         rationale="Clean for MLS listing",
-        phase1_instructions="Remove bottle",
-        phase2_instructions="Fix shadows",
     )
     assert len(plan.removable_objects) == 1
+
+
+def test_edit_plan_empty_removable_objects():
+    plan = EditPlan(structural_keep=["all existing elements"], rationale="staging run")
+    assert plan.removable_objects == []
+
+
+def test_edit_plan_ignores_legacy_phase_fields():
+    import json
+
+    legacy_json = json.dumps(
+        {
+            "removable_objects": ["bottle"],
+            "structural_keep": ["sofa"],
+            "rationale": "test",
+            "phase1_instructions": "old field",
+            "phase2_instructions": "old field",
+        }
+    )
+    plan = EditPlan.model_validate_json(legacy_json)
+    assert plan.removable_objects == ["bottle"]
+    assert not hasattr(plan, "phase1_instructions")
 
 
 def test_edited_image_sha256_validation():
